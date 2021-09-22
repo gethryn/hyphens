@@ -73,7 +73,7 @@ print STDOUT "==================================================================
 my %hyphen_words;
 
 # regex to look for hyphenated words
-my $regex = qr/[^-]+?-+[^-]+?/;
+my $regex = qr/\w+-\w+/;
 
 # # Open Each Text File
 foreach (@textfiles) {
@@ -92,11 +92,11 @@ foreach (@textfiles) {
         
         my $before = " …‘“\"-"; # boundary conditions before search term
         my $after = " ,.…'’;:?!-"; # boundary conditions after search term
+        my $para_start = qr/\s*\<p[^>]+\>\s*.+?/; # only p tags
 
         # get a list of the matches
-        my @matches = $line =~ /(?<=[$before])($regex)(?=[$after])/g;
-        my @matches_startline = $line =~ /^($regex)(?=[$after])/g;
-
+        my @matches = $line =~ /$para_start(?<=[$before])($regex)(?=[$after])/g;
+        my @matches_startline = $line =~ /$para_start($regex)(?=[$after])/g;
         # and count them
         my $count = scalar @matches + scalar @matches_startline;
 
@@ -120,7 +120,7 @@ foreach (@textfiles) {
     my $uniq = scalar @all_matches; # count unique matches
 
     print STDOUT "Found $uniq hyphenated word(s). \n";
-    print STDOUT join "; ", @all_matches;
+    print STDOUT join "\n ", grep { m/$regex/g } @all_matches;
     print STDOUT ".\n\n";
 }
 
