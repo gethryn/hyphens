@@ -73,7 +73,7 @@ print STDOUT "==================================================================
 my %hyphen_words;
 
 # regex to look for hyphenated words
-my $regex = qr/\w+-\w+/;
+my $regex = qr/\w+\s*-+\s*\w+/;
 
 # # Open Each Text File
 foreach (@textfiles) {
@@ -120,7 +120,7 @@ foreach (@textfiles) {
     my $uniq = scalar @all_matches; # count unique matches
 
     print STDOUT "Found $uniq hyphenated word(s). \n";
-    print STDOUT join "\n ", grep { m/$regex/g } @all_matches;
+    print STDOUT join "; ", grep { m/$regex/g } @all_matches;
     print STDOUT ".\n\n";
 }
 
