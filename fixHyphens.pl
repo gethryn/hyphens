@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 use 5.18.0;
+use utf8;
+binmode(STDOUT, "encoding(UTF-8)");
 
 # Usage:  
     # 1st Argument: The file to containing the LL words
@@ -73,39 +75,49 @@ print STDOUT "==================================================================
 my %hyphen_words;
 
 # regex to look for hyphenated words
-my $regex = qr/\w+(\s*-+\s*\w+)+/;
+my $regex = qr/\w+\s*-+\s*\w+/;
 
 my $regex_ignore = qr/(again|\b[hH]er\b|\b[hH]is\b|\b[nN]ow\b|\b[Tt]hat.s\b|\b[tT]hen\b|\ba\b|\ball\b|\balso\b|\ban\b|\band\b|\bany\b|\bare\b|\bas\b|\bat\b|\bboth\b|\bbut\b|\bby\b|\bcan\b|\bcome\b|\bcould\b|\bdid\b|\bdo\b|\belse\b|\beven\b|\bevery\b|\bfor\b|\bfrom\b|\bhad\b|\bhas\b|\bhave\b|\bhave\b|\bhe\b|\bhe.d\b|\bher\b|\bhere\b|\bhim\b|\bhis\b|\bhow\b|\bI\b|\bI’\b|\bif\b|\bI.m\b|I’ll\b|\bin\b|\bis\b|\bit\b|\bit.s\b|\bits\b|\bjust\b|\bmay\b|\bmaybe\b|\bme\b|\bmore\b|bmy\b|\bnever\b|\bno\b|\bnor\b|\bnot\b|\bnow\b|\bof\b|\boh\b|\bon\b|\bor\b|\bout\b|\bsay\b|\bshall\b|\bsee\b\bshe\b|\bso\b|\bthat\b|\bthe\b|\bthem\b|\bthen\b|\bthere\b|\bthey\b|\bthis\b|\bthose\b|\bthough\b|\bto\b|\btoo\b|\buntil\b|\bup\b|\bus\b|\bwas\b|\bwe\b|\bwell\b|we.ll|\bwere\b|\bwhat\b|\bwhen\b|\bwhere\b|wherever|whenever|\bwhich|\bwhile\b|\bwho\b|\bwill\b|\bwith\b|\bwould\b|\byes\b|\byet\b|\byou\b|\byou.re\b)/;
 
 my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;
 
-my $regex_multi_hyphen = qr/\w+(\s*-+\s*\w+){2,}/;
+my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # non capture group for repeated part
 
 # # Open Each Text File
 foreach (@textfiles) {
     my $textfile = "html/" . $_;
     # my $textfile_out = $textfile =~ s/(\.txt|\.html)/_clean$1/gr;
 
-    print STDOUT "\n\nScanning [$textfile]: \n";
+    print STDOUT "\n\n--------------------------------------------------------------------------------\n";
+    print STDOUT "Scanning [$textfile]: \n";
     print STDOUT "--------------------------------------------------------------------------------\n";
 
     my $i = 0;
     my @all_matches;
-    open (FH, '<', $textfile) or die "Can't open input file '$textfile': $!";
+    open (FH, '< :encoding(UTF-8)', $textfile) or die "Can't open input file '$textfile': $!";
     # open (FHOUT, '>', $textfile_out) or die "Can't open output file '$textfile_out': $!";
     while (<FH>) {
         my $line = $_;
         
-        my $before = " …‘“\"-"; # boundary conditions before search term
-        my $after = " ,.…'’;:?!-"; # boundary conditions after search term
-        my $para_start = qr/\s*\<p[^>]+\>\s*.+?/; # only p tags
+        my $before = " …’”‘“\"'"; # boundary conditions before search term
+        my $after = " ,.…‘'’;:?!”“\""; # boundary conditions after search term
+        my $para_start = qr/\s*\<p[^>]+\>\s*./; # only p tags
 
         # get a list of the matches
-        my @matches = $line =~ /$para_start(?<=[$before])($regex)(?=[$after])/g;
-        my @matches_startline = $line =~ /$para_start($regex)(?=[$after])/g;
-        # and count them
-        my $count = scalar @matches + scalar @matches_startline;
+        if ($line =~ m/$para_start/) {
+            $line = $line =~ s/\s*\<[^>]+?\>//gr;
+            my @matches = $line =~ m/(?<=[$before])($regex)(?=\s*[$after])/g;
+            my @matches_startline = $line =~ m/^($regex)(?=\s*[$after])/g;
+            my @matches_multiline = $line =~ m/($regex_multi_hyphen)/g;
+            # and count them
+            my $count = scalar @matches + scalar @matches_startline + scalar @matches_multiline;
 
+            if ($count != 0) {
+                print STDOUT "[$count \@ line $.: ";
+                print STDOUT join "; ", uniq(@matches, @matches_startline, @matches_multiline);
+                print STDOUT "] -> " . $line; # remove html tags
+            }        
+         
         # # fix any words that matched
         # $line =~ s/(?<=[$before])($regex)(?=[$after])/$replace{$1}/g;
         # $line =~ s/^($regex)(?=[$after])/$replace{$1}/g;
@@ -114,9 +126,10 @@ foreach (@textfiles) {
         # print FHOUT $line; 
 
         # count the instance of a match
-        $i += $count;
-        #add the matches to the list of all matches for the file
-        @all_matches = uniq(@all_matches, @matches, @matches_startline);
+            $i += $count;
+            #add the matches to the list of all matches for the file
+            @all_matches = uniq(@all_matches, @matches, @matches_startline);
+        }
 
     }
     
@@ -127,22 +140,21 @@ foreach (@textfiles) {
     @cleaned_matches = grep { $_ !~ m/$regex_emdashes/gi } @cleaned_matches; # remove likely em-dashes
     @cleaned_matches = grep { $_ !~ m/$regex_multi_hyphen/gi } @cleaned_matches;  # remove words with multiple hyphens
 
-    my @dirty_matches1 = grep { m/$regex_ignore/gi } @all_matches; # remove excluded hyphen words
-    my @dirty_matches2 = grep { m/$regex_emdashes/gi } @all_matches; # remove likely em-dashes
-    my @dirty_matches3 = grep { m/$regex_multi_hyphen/gi } @all_matches;  # remove words with multiple hyphens
-    my @dirty_matches = uniq(@dirty_matches1, @dirty_matches2, @dirty_matches3);
+    my @dirty_matches = grep { m/($regex_ignore|$regex_emdashes|$regex_multi_hyphen)/gi } @all_matches;  # remove words with multiple hyphens
 
     my $uniq = scalar @all_matches; # count unique matches
     my $cleaned = scalar @cleaned_matches; 
+    my $dirty = scalar @dirty_matches; 
 
-    print STDOUT "Found $uniq hyphenated word(s).\n I removed these:\n";
+    print STDOUT "\n\n--------------------------------------------------------------------------------\n";
+    print STDOUT "Found $uniq instances of hyphenated word(s).\nI think these " . $dirty . " words need to be fixed:\n";
     print STDOUT "--------------------------------------------------------------------------------\n";
-    print STDOUT join "; ", grep { m/$regex/g } @dirty_matches;
-    print STDOUT "\n\nThese $cleaned cleaned matches remain.\n";
+    print STDOUT join "; ", grep { m/$regex/g } sort { "\L$a" cmp "\L$b" } @dirty_matches;
+    print STDOUT "\n\nThese $cleaned hyphenated words remain.\n";
     print STDOUT "--------------------------------------------------------------------------------\n";
-    print STDOUT join "; ", grep { m/$regex/g } @cleaned_matches;
-    print STDOUT ".\n--------------------------------------------------------------------------------\n";
+    print STDOUT join "; ", grep { m/$regex/g } sort { "\L$a" cmp "\L$b" } @cleaned_matches;
+    print STDOUT ".\n--------------------------------------------------------------------------------\n\n";
 }
 
-print STDOUT "Completed at " . localtime() . "\n";
+print STDOUT "\n\nCompleted at " . localtime() . "\n";
 print STDOUT "================================================================================";
