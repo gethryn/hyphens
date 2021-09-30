@@ -15,9 +15,12 @@ chomp(my @words = <WFH>);
 close WFH or die "Can't close file: $!";
 
 # regex to look for hyphenated words
-my $regex = qr/\w+\s*-+\s*\w+/;
+my $regex = qr/[-—–]/;
 
 # get a list of the matches
-my @matches = grep { m/$regex/ } @words;
+my @matches = grep { m/$regex/ig } @words;
+
+print STDOUT "Searching through " . scalar @words . " words in " . $wordfile . "\n\n";
 
 print STDOUT join "; ", @matches;
+print STDOUT "\n\n";

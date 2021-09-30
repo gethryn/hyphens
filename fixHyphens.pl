@@ -73,7 +73,13 @@ print STDOUT "==================================================================
 my %hyphen_words;
 
 # regex to look for hyphenated words
-my $regex = qr/\w+\s*-+\s*\w+/;
+my $regex = qr/\w+(\s*-+\s*\w+)+/;
+
+my $regex_ignore = qr/(again|\b[hH]er\b|\b[hH]is\b|\b[nN]ow\b|\b[Tt]hat.s\b|\b[tT]hen\b|\ba\b|\ball\b|\balso\b|\ban\b|\band\b|\bany\b|\bare\b|\bas\b|\bat\b|\bboth\b|\bbut\b|\bby\b|\bcan\b|\bcome\b|\bcould\b|\bdid\b|\bdo\b|\belse\b|\beven\b|\bevery\b|\bfor\b|\bfrom\b|\bhad\b|\bhas\b|\bhave\b|\bhave\b|\bhe\b|\bhe.d\b|\bher\b|\bhere\b|\bhim\b|\bhis\b|\bhow\b|\bI\b|\bI’\b|\bif\b|\bI.m\b|I’ll\b|\bin\b|\bis\b|\bit\b|\bit.s\b|\bits\b|\bjust\b|\bmay\b|\bmaybe\b|\bme\b|\bmore\b|bmy\b|\bnever\b|\bno\b|\bnor\b|\bnot\b|\bnow\b|\bof\b|\boh\b|\bon\b|\bor\b|\bout\b|\bsay\b|\bshall\b|\bsee\b\bshe\b|\bso\b|\bthat\b|\bthe\b|\bthem\b|\bthen\b|\bthere\b|\bthey\b|\bthis\b|\bthose\b|\bthough\b|\bto\b|\btoo\b|\buntil\b|\bup\b|\bus\b|\bwas\b|\bwe\b|\bwell\b|we.ll|\bwere\b|\bwhat\b|\bwhen\b|\bwhere\b|wherever|whenever|\bwhich|\bwhile\b|\bwho\b|\bwill\b|\bwith\b|\bwould\b|\byes\b|\byet\b|\byou\b|\byou.re\b)/;
+
+my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;
+
+my $regex_multi_hyphen = qr/\w+(\s*-+\s*\w+){2,}/;
 
 # # Open Each Text File
 foreach (@textfiles) {
@@ -117,11 +123,25 @@ foreach (@textfiles) {
     close FH or die "Can't close file: $!";
     # close FHOUT or die "Can't close file: $_";
 
-    my $uniq = scalar @all_matches; # count unique matches
+    my @cleaned_matches = grep { $_ !~ m/$regex_ignore/gi } @all_matches; # remove excluded hyphen words
+    @cleaned_matches = grep { $_ !~ m/$regex_emdashes/gi } @cleaned_matches; # remove likely em-dashes
+    @cleaned_matches = grep { $_ !~ m/$regex_multi_hyphen/gi } @cleaned_matches;  # remove words with multiple hyphens
 
-    print STDOUT "Found $uniq hyphenated word(s). \n";
-    print STDOUT join "; ", grep { m/$regex/g } @all_matches;
-    print STDOUT ".\n\n";
+    my @dirty_matches1 = grep { m/$regex_ignore/gi } @all_matches; # remove excluded hyphen words
+    my @dirty_matches2 = grep { m/$regex_emdashes/gi } @all_matches; # remove likely em-dashes
+    my @dirty_matches3 = grep { m/$regex_multi_hyphen/gi } @all_matches;  # remove words with multiple hyphens
+    my @dirty_matches = uniq(@dirty_matches1, @dirty_matches2, @dirty_matches3);
+
+    my $uniq = scalar @all_matches; # count unique matches
+    my $cleaned = scalar @cleaned_matches; 
+
+    print STDOUT "Found $uniq hyphenated word(s).\n I removed these:\n";
+    print STDOUT "--------------------------------------------------------------------------------\n";
+    print STDOUT join "; ", grep { m/$regex/g } @dirty_matches;
+    print STDOUT "\n\nThese $cleaned cleaned matches remain.\n";
+    print STDOUT "--------------------------------------------------------------------------------\n";
+    print STDOUT join "; ", grep { m/$regex/g } @cleaned_matches;
+    print STDOUT ".\n--------------------------------------------------------------------------------\n";
 }
 
 print STDOUT "Completed at " . localtime() . "\n";
