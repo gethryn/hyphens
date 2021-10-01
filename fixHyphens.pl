@@ -36,52 +36,30 @@ print STDOUT "* There are $numfiles file(s) to process: ";
 print STDOUT join "; ", @textfiles;
 print STDOUT ".\n";
 
-# open the text file with the hyphens to check.
-# my $wordfile = $ARGV[0] ||= "hyphen_words.txt";
-# open (WFH, '<', $wordfile) or die "Can't open input file '$wordfile': $!";
+# open the text file with the non eligible hyphens to check.
+my $wordfile = $ARGV[0] ||= "NonElligibleHyphenWords.txt";
+open (WFH, '< :encoding(UTF-8)', $wordfile) or die "Can't open input file '$wordfile': $!";
 
 # # import the words into an array
-# chomp(my @lines = <WFH>);
+chomp(my @non_eligible = <WFH>);
 
 # # close the file again
-# close WFH or die "Can't close file: $!";
+close WFH or die "Can't close file: $!";
 
-# # # # create the hash to store the words to correct
-# my %replace;
+my $regex_noneligible = join "|", @non_eligible;
+$regex_noneligible = qr/(-+\s*\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b\s*-+)/i;
 
-# for ( @lines ) {
-#     my $lookup = $_ =~ s/ll/l /gr;
-#     $replace{$lookup} = $_;
-# }
+print "\n\n Non-Eligible Word Pattern: $regex_noneligible";
 
-# # add duplicate entry with first letter capitalised for all existing entries
-# @replace{ map { ucfirst } keys %replace } = map { ucfirst } values %replace;
-
-# # find edge case: words ending in ll that don't have two spaces before next word.
-# my @ends_with_ll = grep { m/l\s$/ } keys %replace;
-
-# # output the number of entries imported
-# my $num_words = scalar keys %replace;
-# print STDOUT "* There are $num_words entrie(s) in the \%replace hash from [$wordfile].\n";
-print STDOUT "================================================================================\n\n";
-
-# my $regex = join "|", map { quotemeta } sort { $b cmp $a } keys %replace;
-# my $regex_ends_with_ll = join "|", map { quotemeta } sort { $b cmp $a } @ends_with_ll;
-
-# $regex = qr/$regex/;
-# $regex_ends_with_ll = qr/$regex_ends_with_ll/;
-
-# a hash to store the hyphenated words found
-my %hyphen_words;
+print STDOUT "\n================================================================================\n\n";
 
 # regex to look for hyphenated words
-my $regex = qr/\w+\s*-+\s*\w+/;
-
-my $regex_ignore = qr/(again|\b[hH]er\b|\b[hH]is\b|\b[nN]ow\b|\b[Tt]hat.s\b|\b[tT]hen\b|\ba\b|\ball\b|\balso\b|\ban\b|\band\b|\bany\b|\bare\b|\bas\b|\bat\b|\bboth\b|\bbut\b|\bby\b|\bcan\b|\bcome\b|\bcould\b|\bdid\b|\bdo\b|\belse\b|\beven\b|\bevery\b|\bfor\b|\bfrom\b|\bhad\b|\bhas\b|\bhave\b|\bhave\b|\bhe\b|\bhe.d\b|\bher\b|\bhere\b|\bhim\b|\bhis\b|\bhow\b|\bI\b|\bI’\b|\bif\b|\bI.m\b|I’ll\b|\bin\b|\bis\b|\bit\b|\bit.s\b|\bits\b|\bjust\b|\bmay\b|\bmaybe\b|\bme\b|\bmore\b|bmy\b|\bnever\b|\bno\b|\bnor\b|\bnot\b|\bnow\b|\bof\b|\boh\b|\bon\b|\bor\b|\bout\b|\bsay\b|\bshall\b|\bsee\b\bshe\b|\bso\b|\bthat\b|\bthe\b|\bthem\b|\bthen\b|\bthere\b|\bthey\b|\bthis\b|\bthose\b|\bthough\b|\bto\b|\btoo\b|\buntil\b|\bup\b|\bus\b|\bwas\b|\bwe\b|\bwell\b|we.ll|\bwere\b|\bwhat\b|\bwhen\b|\bwhere\b|wherever|whenever|\bwhich|\bwhile\b|\bwho\b|\bwill\b|\bwith\b|\bwould\b|\byes\b|\byet\b|\byou\b|\byou.re\b)/;
-
-my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;
-
-my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # non capture group for repeated part
+my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
+my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
+my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
+my $regex_repeated_word = qr/(\w+)\s*-\s*(\1)/; # stuttering
+my $regex_emphasis = qr/\s-\w+?-\s/; # I know him -too- well.
+my $regex_broken_dialogue = qr//; # ends with a hyphen
 
 # # Open Each Text File
 foreach (@textfiles) {
@@ -98,32 +76,94 @@ foreach (@textfiles) {
     # open (FHOUT, '>', $textfile_out) or die "Can't open output file '$textfile_out': $!";
     while (<FH>) {
         my $line = $_;
-        
+
+        my $para_start = qr/\s*\<p[^>]+\>\s*./; # only p tags
         my $before = " …’”‘“\"'"; # boundary conditions before search term
         my $after = " ,.…‘'’;:?!”“\""; # boundary conditions after search term
-        my $para_start = qr/\s*\<p[^>]+\>\s*./; # only p tags
-
+        
         # get a list of the matches
-        if ($line =~ m/$para_start/) {
-            $line = $line =~ s/\s*\<[^>]+?\>//gr;
+        if ($line =~ m/$para_start/) { # starts with p-tag
             my @matches = $line =~ m/(?<=[$before])($regex)(?=\s*[$after])/g;
             my @matches_startline = $line =~ m/^($regex)(?=\s*[$after])/g;
             my @matches_multiline = $line =~ m/($regex_multi_hyphen)/g;
+            my @matches_noneligible = $line =~ m/($regex_noneligible)/g;
             # and count them
-            my $count = scalar @matches + scalar @matches_startline + scalar @matches_multiline;
+            my $count = scalar @matches + scalar @matches_startline + 
+                scalar @matches_multiline + scalar @matches_noneligible;
+
+            my @matches_line = uniq(@matches, @matches_startline, @matches_multiline,
+                @matches_noneligible);
 
             if ($count != 0) {
                 print STDOUT "[$count \@ line $.: ";
-                print STDOUT join "; ", uniq(@matches, @matches_startline, @matches_multiline);
-                print STDOUT "] -> " . $line; # remove html tags
-            }        
-         
+                print STDOUT join "; ", @matches_line;
+                print STDOUT "] -> " . $line =~ s/\s*\<[^>]+?\>//gr; # remove html tags
+            }    
+
+            if ($count > 0) { # we have hyphens
+
+                my %replace;
+                my @values;
+
+                ### emphasis --------------------------------------
+                
+                my @matches_emphasis = $line =~ m/$regex_emphasis/g;
+                @matches_emphasis = uniq(@matches_emphasis);
+                @values = map { $_ =~ s/\s-(\w+?)-\s/ \<i\>$1\<\/i\> /gr } @matches_emphasis;
+                @replace{@matches_emphasis} = @values;
+
+                print STDOUT "  emphasis => ";
+                print STDOUT map { "$_ = $replace{$_}; " } @matches_emphasis;
+                print STDOUT "\n";
+
+                ### APPLY SUBST non-eligible here to remove from future consideration
+                $line = $line =~ s/$_/$replace{$_}/egr for @matches_emphasis;
+                #$line =~ map { s/($_)/$replace{$1}/gr } @matches_emphasis;
+
+                # double hyphens to em-dash
+                my @matches_emdash = $line =~ m/$regex_emdashes/g;
+                @matches_emdash = uniq(@matches_emdash);
+                @values = map { $_ =~ s/\s*-{2,}\s*/—/gr } @matches_emdash;
+                @replace{@matches_emdash} = @values;
+
+                print STDOUT "  emdash => ";
+                print STDOUT map { "$_ = $replace{$_}; " } @matches_emdash;
+                print STDOUT "\n";
+
+                ### APPLY SUBST emdash here to remove from future consideration
+                #$line =~ s///g;
+
+                # non eligible hypens -> emdash. ------------------
+                @matches_noneligible = uniq(@matches_noneligible);
+                @values = map { $_ =~ s/\s*-+\s*/—/gr } @matches_noneligible;
+
+                @replace{@matches_noneligible} = @values;
+
+                print STDOUT "  noneleg => ";
+                print STDOUT map { "$_ = $replace{$_}; " } @matches_noneligible;
+                print STDOUT "\n";
+
+                ### APPLY SUBST non-eligible here to remove from future consideration
+                #$line =~ s///g;
+
+
+
+            }
+
+            if ($count != 0) {
+                print STDOUT "[FIXED] ->> " . $line =~ s/\s*\<[^>]+?\>//gr; # remove html tags
+                print STDOUT "\n\n";
+            } 
+
         # # fix any words that matched
         # $line =~ s/(?<=[$before])($regex)(?=[$after])/$replace{$1}/g;
         # $line =~ s/^($regex)(?=[$after])/$replace{$1}/g;
        
         # output the line to the cleaned file
         # print FHOUT $line; 
+
+        #add the matches to the list of all matches for the file
+            @all_matches = uniq(@all_matches, @matches_line);
 
         # count the instance of a match
             $i += $count;
@@ -136,11 +176,11 @@ foreach (@textfiles) {
     close FH or die "Can't close file: $!";
     # close FHOUT or die "Can't close file: $_";
 
-    my @cleaned_matches = grep { $_ !~ m/$regex_ignore/gi } @all_matches; # remove excluded hyphen words
+    my @cleaned_matches = grep { $_ !~ m/$regex_noneligible/gi } @all_matches; # remove excluded hyphen words
     @cleaned_matches = grep { $_ !~ m/$regex_emdashes/gi } @cleaned_matches; # remove likely em-dashes
     @cleaned_matches = grep { $_ !~ m/$regex_multi_hyphen/gi } @cleaned_matches;  # remove words with multiple hyphens
 
-    my @dirty_matches = grep { m/($regex_ignore|$regex_emdashes|$regex_multi_hyphen)/gi } @all_matches;  # remove words with multiple hyphens
+    my @dirty_matches = grep { m/($regex_noneligible|$regex_emdashes|$regex_multi_hyphen)/gi } @all_matches;  # remove words with multiple hyphens
 
     my $uniq = scalar @all_matches; # count unique matches
     my $cleaned = scalar @cleaned_matches; 
