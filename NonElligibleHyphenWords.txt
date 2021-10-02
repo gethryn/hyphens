@@ -13,7 +13,8 @@ bmy
 both
 but
 by
-camefrom
+came
+from
 can
 come
 could
@@ -28,7 +29,7 @@ had
 has
 have
 he
-he.d
+he.[sd]
 her
 here
 him
@@ -43,6 +44,7 @@ in
 is
 it
 it.s
+it.ll
 its
 just
 may
@@ -84,15 +86,14 @@ us
 was
 we
 we.ll
+we.re
 well
 were
 what
 when
 whenever
 where
-where
 wherever
-which
 which
 while
 who
@@ -103,3 +104,4 @@ yes
 yet
 you
 you.re
+your
