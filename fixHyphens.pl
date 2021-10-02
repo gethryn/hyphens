@@ -10,7 +10,8 @@ binmode(STDOUT, "encoding(UTF-8)");
     # 1st Argument: debug flag
     # 2nd Argument: filename for non-eligible hyphen words
 
-my $DEBUG = $ARGV[0] ||= "debug" ? 0 : 1;
+my $DEBUG = $ARGV[0] ||= 0;
+my $wordfile = $ARGV[1] ||= "NonElligibleHyphenWords.txt";
 
 # variables used in
 my $para_start = qr/\s*\<p[^>]+\>\s*./; # only p tags
@@ -45,7 +46,6 @@ print STDOUT join "; ", @textfiles;
 print STDOUT ".\n";
 
 # open the text file with the non eligible hyphens to check.
-my $wordfile = $ARGV[1] ||= "NonElligibleHyphenWords.txt";
 open (WFH, '< :encoding(UTF-8)', $wordfile) or die "Can't open input file '$wordfile': $!";
 
 # # import the words into an array
