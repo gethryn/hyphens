@@ -54,7 +54,7 @@ chomp(my @non_eligible = <WFH>);
 # # close the file again
 close WFH or die "Can't close file: $!";
 
-my $regex_noneligible = join "|", @non_eligible;
+my $regex_noneligible = join "|", sort { $b cmp $a} @non_eligible;
 $regex_noneligible = qr/[^-]\b\w+?\b([–—-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[–—-])\b\w+?\b[^-]/i;
 
 # regex to look for hyphenated words
@@ -127,7 +127,7 @@ foreach (@textfiles) {
                 # double hyphens to em-dash
                 my @matches_emdash = $line =~ m/$regex_emdashes/g;
                 @matches_emdash = uniq(@matches_emdash);
-                @values = map { $_ =~ s/$regex_emdashes/—/gr } reverse @matches_emdash;
+                @values = map { s/$regex_emdashes/—/gr } reverse @matches_emdash;
                 
                 @replace{@matches_emdash} = @values;
 
@@ -144,7 +144,7 @@ foreach (@textfiles) {
                 # non eligible hypens -> emdash. ------------------
                 my @matches_noneligible = $line =~ m/($regex_noneligible)/g;
                 @matches_noneligible = uniq(@matches_noneligible);
-                @values = map { $_ =~ s/\s*-+\s*/—/gr } @matches_noneligible;
+                @values = map { s/\s*-+\s*/—/gr } @matches_noneligible;
 
                 @replace{@matches_noneligible} = @values;
 
@@ -161,7 +161,7 @@ foreach (@textfiles) {
                 # repeated words to em-dash
                 my @matches_repeated = $line =~ m/$regex_repeated_word/g;
                 @matches_repeated = uniq(@matches_repeated);
-                @values = map { $_ =~ s/\s*-+\s*/—/gr } @matches_repeated;
+                @values = map { s/\s*-+\s*/—/gr } @matches_repeated;
 
                 @replace{@matches_repeated} = @values;
 
@@ -193,10 +193,10 @@ foreach (@textfiles) {
     }
     
     close FH or die "Can't close file: $!";
-    close FHOUT or die "Can't close file: $_";
+    close FHOUT or die "Can't close file: $!";
 
     print STDOUT "\n\n--------------------------------------------------------------------------------\n";
-    print STDOUT "Found " . scalar @all_matches ." instances of hyphenated word(s).";
+    print STDOUT "Found " . scalar @all_matches ." instances of hyphenated word(s).\n";
     print STDOUT "--------------------------------------------------------------------------------\n";
     print STDOUT join "; ", grep { m/$regex/g } sort { "\L$a" cmp "\L$b" } @all_matches;
     print STDOUT ".\n--------------------------------------------------------------------------------\n\n";
