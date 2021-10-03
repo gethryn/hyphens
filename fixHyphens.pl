@@ -19,7 +19,7 @@ my $before = " …’”‘“\"'"; # boundary conditions before search term
 my $after = " ,.…‘'’;:?!”“\""; # boundary conditions after search term
 
 print STDOUT "================================================================================\n";
-print STDOUT "fixHyphen Script Run at " . localtime() . "\n";
+print STDOUT "fixHyphen Script Run at " . localtime() . "\n\n";
 
 # a function to remove duplicates from an array
 sub uniq (@) {
@@ -41,9 +41,9 @@ while ( readdir $dh ) {
 }
 my $numfiles = scalar @textfiles;
 
-print STDOUT "* There are $numfiles file(s) to process: ";
-print STDOUT join "; ", @textfiles;
-print STDOUT ".\n";
+print STDOUT "There are $numfiles file(s) to process: \n*\t";
+print STDOUT join "\n*\t", @textfiles;
+print STDOUT "\n";
 
 # open the text file with the non eligible hyphens to check.
 open (WFH, '< :encoding(UTF-8)', $wordfile) or die "Can't open input file '$wordfile': $!";
@@ -55,7 +55,7 @@ chomp(my @non_eligible = <WFH>);
 close WFH or die "Can't close file: $!";
 
 my $regex_noneligible = join "|", sort { $b cmp $a} @non_eligible;
-$regex_noneligible = qr/(?<![-])(\b\w+?\b[–—-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[–—-]\b\w+?\b)(?![-])/i;
+$regex_noneligible = qr/(?<![-])(\b\w+?\b[-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[-]\b\w+?\b)(?![-])/i;
 
 # regex to look for hyphenated words
 my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
@@ -63,9 +63,9 @@ my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-d
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
-my $regex_broken_dialogue = qr//; # ends with a hyphen
+my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"'])/; # ends with a hyphen
 
-print "\n\n Non-Eligible Word Pattern generated: $regex_noneligible";
+print "\n\nNon-Eligible Word Pattern generated from $wordfile:\n\n$regex_noneligible";
 
 print STDOUT "\n================================================================================\n\n";
 
@@ -74,14 +74,17 @@ foreach (@textfiles) {
     my $textfile = "html/" . $_;
     my $textfile_out = $textfile =~ s/(\.txt|\.html)/_clean$1/gr;
 
-    print STDOUT "\n\n--------------------------------------------------------------------------------\n";
-    print STDOUT "Scanning [$textfile]: \n";
+    print STDOUT "\n\nScanning [$textfile]: \n";
     print STDOUT "--------------------------------------------------------------------------------\n";
 
     my @all_matches;
 
     open (FH, '< :encoding(UTF-8)', $textfile) or die "Can't open input file '$textfile': $!";
     open (FHOUT, '> :encoding(UTF-8)', $textfile_out) or die "Can't open output file '$textfile_out': $!";
+
+    print STDOUT "* Parsing hyphens...";
+    my %counter; # for output
+
     while (<FH>) {
         my $line = $_;
         
@@ -105,8 +108,28 @@ foreach (@textfiles) {
 
                 my %replace;
                 my @values;
+                
+                # broken dialogue to em-dash ----------------------------------
+                my @matches_broken_dialogue = $line =~ m/$regex_broken_dialogue/g;
+                @matches_broken_dialogue = uniq(@matches_broken_dialogue);
+                @values = map { s/\s*-\s*/—/gr } @matches_broken_dialogue;
 
-                ### emphasis --------------------------------------
+                @replace{@matches_broken_dialogue} = @values;
+
+                $counter{'broken_dialogue'} = $counter{'broken_dialogue'}++ + scalar @matches_broken_dialogue;
+
+                if ($DEBUG) { 
+                    print STDOUT "  brkdialogue => ";
+                    print STDOUT map { "$_ = $replace{$_}; " } sort @matches_broken_dialogue;
+                    print "\n";
+                }
+
+                # APPLY SUBST to remove from future consideration
+                $line =~ s/$_/$replace{$_}/eg for @matches_broken_dialogue;
+                %replace = (); # clear the replace hash
+
+                
+                # emphasis ----------------------------------------------------
                 
                 my @matches_emphasis = $line =~ m/$regex_emphasis/g;
                 @matches_emphasis = uniq(@matches_emphasis);
@@ -115,21 +138,25 @@ foreach (@textfiles) {
                 # Add the matches to the replace hash
                 @replace{@matches_emphasis} = map {$_} @values;
 
+                $counter{'emphasis'} = $counter{'emphasis'}++ + scalar @matches_emphasis;
+
                 if ($DEBUG) {
                     print STDOUT "  emphasis => ";
-                    print STDOUT map { "$_ = $replace{$_}; " } @matches_emphasis;
+                    print STDOUT map { "$_ = $replace{$_}; " } sort @matches_emphasis;
                     print STDOUT "\n";
                 }
-                ### APPLY SUBST non-eligible here to remove from future consideration
+                ### APPLY SUBST to remove from future consideration
                 $line =~ s/$_/$replace{$_}/eg for @matches_emphasis;
                 %replace = (); # clear the replace hash
 
-                # double hyphens to em-dash
+                # double hyphens to em-dash -----------------------------------
                 my @matches_emdash = $line =~ m/$regex_emdashes/g;
                 @matches_emdash = uniq(@matches_emdash);
                 @values = map { s/$regex_emdashes/—/gr } reverse @matches_emdash;
                 
                 @replace{@matches_emdash} = @values;
+
+                $counter{'emdash'} = $counter{'emdash'}++ + scalar @matches_emdash;
 
                 if ($DEBUG) {
                     print STDOUT "  emdash => ";
@@ -137,16 +164,19 @@ foreach (@textfiles) {
                     print STDOUT "\n";
                 }
 
-                ### APPLY SUBST emdash here to remove from future consideration
+                ### APPLY SUBST to remove from future consideration
                 $line =~ s/$_/$replace{$_}/eg for @matches_emdash;
                 %replace = (); # clear the replace hash
-
-                # non eligible hypens -> emdash. ------------------
+                
+                
+                # non eligible hypens -> emdash. ------------------------------
                 my @matches_noneligible = $line =~ m/($regex_noneligible)/g;
                 @matches_noneligible = uniq(@matches_noneligible);
                 @values = map { s/\s*-+\s*/—/gr } @matches_noneligible;
 
                 @replace{@matches_noneligible} = @values;
+
+                $counter{'noneligible'} = $counter{'noneligible'}++ + scalar @matches_noneligible;
 
                 if ($DEBUG) {
                     print STDOUT "  noneleg => ";
@@ -154,16 +184,18 @@ foreach (@textfiles) {
                     print STDOUT "\n";
                 }
 
-                ### APPLY SUBST non-eligible here to remove from future consideration
+                # APPLY SUBST to remove from future consideration
                 $line =~ s/$_/$replace{$_}/eg for @matches_noneligible;
                 %replace = (); # clear the replace hash
 
-                # repeated words to em-dash
+                # repeated words to em-dash -----------------------------------
                 my @matches_repeated = $line =~ m/$regex_repeated_word/g;
                 @matches_repeated = uniq(@matches_repeated);
                 @values = map { s/\s*-+\s*/—/gr } @matches_repeated;
 
                 @replace{@matches_repeated} = @values;
+
+                $counter{'repeated'} = $counter{'repeated'}++ + scalar @matches_repeated;
 
                 if ($DEBUG) {
                     print STDOUT "  repeat => ";
@@ -171,7 +203,7 @@ foreach (@textfiles) {
                     print STDOUT "\n";
                 }
 
-                ### APPLY SUBST non-eligible here to remove from future consideration
+                # APPLY SUBST to remove from future consideration
                 $line =~ s/$_/$replace{$_}/eg for @matches_repeated;
                 %replace = (); # clear the replace hash
 
@@ -190,16 +222,27 @@ foreach (@textfiles) {
         # output the line to the cleaned file
         print FHOUT $line; 
 
+        $counter{'line'} = $.;
     }
+
+    print STDOUT "\n\t-> broken dialogue: " . $counter{'broken_dialogue'};
+    print STDOUT "\n\t-> emphasis: " . $counter{'emphasis'};
+    print STDOUT "\n\t-> apparent emdash: " . $counter{'emdash'};
+    print STDOUT "\n\t-> non-eligible: " . $counter{'noneligible'};
+    print STDOUT "\n\t-> repeated: " . $counter{'repeated'} . "\n\n";
     
     close FH or die "Can't close file: $!";
     close FHOUT or die "Can't close file: $!";
 
-    print STDOUT "\n\n--------------------------------------------------------------------------------\n";
-    print STDOUT "Found " . scalar @all_matches ." instances of hyphenated word(s).\n";
-    print STDOUT "--------------------------------------------------------------------------------\n";
-    print STDOUT join "; ", grep { m/$regex/g } sort { "\L$a" cmp "\L$b" } @all_matches;
-    print STDOUT ".\n--------------------------------------------------------------------------------\n\n";
+    print STDOUT "* File contained $counter{'line'} lines.\n";
+    print STDOUT "* Processed " . scalar @all_matches ." instances of hyphenated word(s).\n";
+    print STDOUT "* Wrote output to [$textfile_out].\n";
+    
+    if ($DEBUG) {
+        print STDOUT "--------------------------------------------------------------------------------\n";
+        print STDOUT join "; ", grep { m/$regex/g } sort { "\L$a" cmp "\L$b" } @all_matches;
+        print STDOUT ".\n--------------------------------------------------------------------------------\n\n";
+    }
 }
 
 print STDOUT "\n\nCompleted at " . localtime() . "\n";

@@ -46,16 +46,16 @@ my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-d
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
-my $regex_broken_dialogue = qr//; # ends with a hyphen [TODO]
+my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"'])/; # ends with a hyphen
 ```
 
 It then runs through each file in the `html` directory and creates an `_clean` version of the file with the edits applied.  
 
 They are procesed in this order (so far), progressively correcting each line so that subsequent tests don't fix things that are already fixed.  I'm not certain this order is right:
-1. **emphasis** fixes `I would -never- do that` to `I would <i class="calibre5">never</i> do that`.
-2. **emdashes** fixes obvious em-dashes like ` - ` with spaces and `--` with or without spaces.
-3. **non-eligible** fixes any word on either side of a hyphen, en-dash or em-dash that appears in the `NonEligibileHyphenWords.txt` file, forcing it to em-dash.
-4. **repeated** forces when words on either side of a hyphen, en-dash or em-dash are the same, eg. stuttering.
-5. **TBC: broken dialogue**.  When dialogue ends with a hyphen, en-dash or em-dash.
+1. **broken dialogue**.  When dialogue ends with a hyphen, en-dash or em-dash.
+2. **emphasis** fixes `I would -never- do that` to `I would <i class="calibre5">never</i> do that`.
+3. **emdashes** fixes obvious em-dashes like ` - ` with spaces and `--` with or without spaces.
+4. **non-eligible** fixes any word on either side of a hyphen, en-dash or em-dash that appears in the `NonEligibileHyphenWords.txt` file, forcing it to em-dash.
+5. **repeated** forces when words on either side of a hyphen, en-dash or em-dash are the same, eg. stuttering. 
 
 The rest are deemed to be normal hyphenated words for you to check.
