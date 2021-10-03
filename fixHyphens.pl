@@ -65,7 +65,7 @@ my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
 my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"'])/; # ends with a hyphen
 
-print "\n\n Non-Eligible Word Pattern generated: $regex_noneligible" if $DEBUG;
+print "\n\nNon-Eligible Word Pattern generated from $wordfile:\n\n$regex_noneligible";
 
 print STDOUT "\n================================================================================\n\n";
 
