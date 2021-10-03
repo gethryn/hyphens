@@ -55,7 +55,7 @@ chomp(my @non_eligible = <WFH>);
 close WFH or die "Can't close file: $!";
 
 my $regex_noneligible = join "|", sort { $b cmp $a} @non_eligible;
-$regex_noneligible = qr/[^-]\b\w+?\b([–—-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[–—-])\b\w+?\b[^-]/i;
+$regex_noneligible = qr/(?<![-])(\b\w+?\b[–—-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[–—-]\b\w+?\b)(?![-])/i;
 
 # regex to look for hyphenated words
 my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
