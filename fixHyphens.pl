@@ -59,7 +59,7 @@ $regex_noneligible = qr/(?<![-])(\b\w+?\b[-]\b(?:$regex_noneligible)\b|\b(?:$reg
 
 # regex to look for hyphenated words
 my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
-my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
+my $regex_emdashes = qr/(\s+-\b|\b-\s+|\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
@@ -82,8 +82,14 @@ foreach (@textfiles) {
     open (FH, '< :encoding(UTF-8)', $textfile) or die "Can't open input file '$textfile': $!";
     open (FHOUT, '> :encoding(UTF-8)', $textfile_out) or die "Can't open output file '$textfile_out': $!";
 
-    print STDOUT "* Parsing hyphens...";
+    print STDOUT "* Parsing hyphens...\n";
     my %counter; # for output
+
+    $counter{'broken_dialogue'} = 0;
+    $counter{'emphasis'} = 0;
+    $counter{'emdash'} = 0;
+    $counter{'noneligible'} = 0;
+    $counter{'repeated'} = 0;
 
     while (<FH>) {
         my $line = $_;
@@ -102,21 +108,21 @@ foreach (@textfiles) {
                 print STDOUT "[$count \@ line $.: ";
                 print STDOUT join "; ", @matches_line;
                 print STDOUT "] -> " . $line =~ s/\s*\<[^>]+?\>//gr; # remove html tags
-            }    
+            } 
+
 
             if ($count > 0) { # we have hyphens
 
                 my %replace;
                 my @values;
-                
+
                 # broken dialogue to em-dash ----------------------------------
                 my @matches_broken_dialogue = $line =~ m/$regex_broken_dialogue/g;
+                $counter{'broken_dialogue'} += scalar @matches_broken_dialogue;
                 @matches_broken_dialogue = uniq(@matches_broken_dialogue);
                 @values = map { s/\s*-\s*/—/gr } @matches_broken_dialogue;
 
                 @replace{@matches_broken_dialogue} = @values;
-
-                $counter{'broken_dialogue'} = $counter{'broken_dialogue'}++ + scalar @matches_broken_dialogue;
 
                 if ($DEBUG) { 
                     print STDOUT "  brkdialogue => ";
@@ -132,13 +138,12 @@ foreach (@textfiles) {
                 # emphasis ----------------------------------------------------
                 
                 my @matches_emphasis = $line =~ m/$regex_emphasis/g;
+                $counter{'emphasis'} += scalar @matches_emphasis;
                 @matches_emphasis = uniq(@matches_emphasis);
                 @values = map { s/-(\w+?)-/<i class=\"calibre5\">$1<\/i>/gr } @matches_emphasis;
 
                 # Add the matches to the replace hash
                 @replace{@matches_emphasis} = map {$_} @values;
-
-                $counter{'emphasis'} = $counter{'emphasis'}++ + scalar @matches_emphasis;
 
                 if ($DEBUG) {
                     print STDOUT "  emphasis => ";
@@ -151,16 +156,15 @@ foreach (@textfiles) {
 
                 # double hyphens to em-dash -----------------------------------
                 my @matches_emdash = $line =~ m/$regex_emdashes/g;
+                $counter{'emdash'} += scalar @matches_emdash;
                 @matches_emdash = uniq(@matches_emdash);
-                @values = map { s/$regex_emdashes/—/gr } reverse @matches_emdash;
+                @values = map { s/$_/—/gr } @matches_emdash;
                 
                 @replace{@matches_emdash} = @values;
 
-                $counter{'emdash'} = $counter{'emdash'}++ + scalar @matches_emdash;
-
                 if ($DEBUG) {
-                    print STDOUT "  emdash => ";
-                    print STDOUT map { "$_ = $replace{$_}; " } @matches_emdash;
+                    print STDOUT "\t\temdash => ";
+                    print STDOUT map { "'$_' = '$replace{$_}'; " } @matches_emdash;
                     print STDOUT "\n";
                 }
 
@@ -171,15 +175,14 @@ foreach (@textfiles) {
                 
                 # non eligible hypens -> emdash. ------------------------------
                 my @matches_noneligible = $line =~ m/($regex_noneligible)/g;
+                $counter{'noneligible'} += scalar @matches_noneligible;
                 @matches_noneligible = uniq(@matches_noneligible);
                 @values = map { s/\s*-+\s*/—/gr } @matches_noneligible;
 
                 @replace{@matches_noneligible} = @values;
 
-                $counter{'noneligible'} = $counter{'noneligible'}++ + scalar @matches_noneligible;
-
                 if ($DEBUG) {
-                    print STDOUT "  noneleg => ";
+                    print STDOUT "\t\tnoneleg => ";
                     print STDOUT map { "$_ = $replace{$_}; " } @matches_noneligible;
                     print STDOUT "\n";
                 }
@@ -190,12 +193,11 @@ foreach (@textfiles) {
 
                 # repeated words to em-dash -----------------------------------
                 my @matches_repeated = $line =~ m/$regex_repeated_word/g;
+                $counter{'repeated'} += scalar @matches_repeated;
                 @matches_repeated = uniq(@matches_repeated);
                 @values = map { s/\s*-+\s*/—/gr } @matches_repeated;
 
                 @replace{@matches_repeated} = @values;
-
-                $counter{'repeated'} = $counter{'repeated'}++ + scalar @matches_repeated;
 
                 if ($DEBUG) {
                     print STDOUT "  repeat => ";
@@ -225,7 +227,7 @@ foreach (@textfiles) {
         $counter{'line'} = $.;
     }
 
-    print STDOUT "\n\t-> broken dialogue: " . $counter{'broken_dialogue'};
+    print STDOUT "\t-> broken dialogue: " . $counter{'broken_dialogue'};
     print STDOUT "\n\t-> emphasis: " . $counter{'emphasis'};
     print STDOUT "\n\t-> apparent emdash: " . $counter{'emdash'};
     print STDOUT "\n\t-> non-eligible: " . $counter{'noneligible'};
