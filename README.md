@@ -39,19 +39,20 @@ The application creates a series of regex expressions to test for each of the de
 
 ```perl
 my $regex_noneligible = join "|", sort { $b cmp $a} @non_eligible;
-$regex_noneligible = qr/[^-]\b\w+?\b([–—-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[–—-])\b\w+?\b[^-]/i;
+$regex_noneligible = qr/(?<![-])(\b\w+?\b[-]\b(?:$regex_noneligible)\b|\b(?:$regex_noneligible)\b[-]\b\w+?\b)(?![-])/i;
 
+# regex to look for hyphenated words
 my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
-my $regex_emdashes = qr/(\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
+my $regex_emdashes = qr/(\s+-\b|\b-\s+|\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
-my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
-my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"'])/; # ends with a hyphen
+my $regex_emphasis = qr/[$before](-[^-]+?-)[$after]/; # I know him -too- well.
+my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"']|\W[’”“‘"']\s*[-]\s*\b\w+?\b)/; # ends with a hyphen
 ```
 
 It then runs through each file in the `html` directory and creates an `_clean` version of the file with the edits applied.  
 
-They are procesed in this order (so far), progressively correcting each line so that subsequent tests don't fix things that are already fixed.  I'm not certain this order is right:
+They are procesed in this order (so far), progressively correcting each line so that subsequent tests don't fix things that are already fixed (will only action lines in which a hyphen is detected):
 1. **broken dialogue**.  When dialogue ends with a hyphen, en-dash or em-dash.
 2. **emphasis** fixes `I would -never- do that` to `I would <i class="calibre5">never</i> do that`.
 3. **emdashes** fixes obvious em-dashes like ` - ` with spaces and `--` with or without spaces.
