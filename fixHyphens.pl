@@ -62,8 +62,8 @@ my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces aroun
 my $regex_emdashes = qr/(\s+-\b|\b-\s+|\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
-my $regex_emphasis = qr/[$before](-\w+?-)[$after]/; # I know him -too- well.
-my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"'])/; # ends with a hyphen
+my $regex_emphasis = qr/[$before](-[^-]+?-)[$after]/; # I know him -too- well.
+my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"']|\W[’”“‘"']\s*[-]\s*\b\w+?\b)/; # ends with a hyphen
 
 print "\n\nNon-Eligible Word Pattern generated from $wordfile:\n\n$regex_noneligible";
 
@@ -96,13 +96,10 @@ foreach (@textfiles) {
         
         # get a list of the matches
         if ($line =~ m/$para_start/) { # starts with p-tag
-            my @matches = $line =~ m/(?<=[$before])($regex)(?=\s*[$after])/g;
-            my @matches_startline = $line =~ m/^($regex)(?=\s*[$after])/g;
+            my @matches_line = $line =~ m/-/g;
             
             # and count them
-            my $count = scalar @matches + scalar @matches_startline;
-
-            my @matches_line = uniq(@matches, @matches_startline);
+            my $count = scalar @matches_line;
 
             if ($count != 0 and $DEBUG) {
                 print STDOUT "[$count \@ line $.: ";
@@ -140,7 +137,7 @@ foreach (@textfiles) {
                 my @matches_emphasis = $line =~ m/$regex_emphasis/g;
                 $counter{'emphasis'} += scalar @matches_emphasis;
                 @matches_emphasis = uniq(@matches_emphasis);
-                @values = map { s/-(\w+?)-/<i class=\"calibre5\">$1<\/i>/gr } @matches_emphasis;
+                @values = map { s/-([^-]+?)-/<i class=\"calibre5\">$1<\/i>/gr } @matches_emphasis;
 
                 # Add the matches to the replace hash
                 @replace{@matches_emphasis} = map {$_} @values;
