@@ -22,6 +22,7 @@ could
 did
 do
 else
+especially
 even
 every
 for
@@ -54,13 +55,11 @@ me
 more
 my
 never
-no
 nor
 not
 now
 of
 oh
-on
 or
 out
 ours
@@ -92,7 +91,6 @@ was
 we
 we.ll
 we.re
-well
 were
 what
 when
