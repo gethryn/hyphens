@@ -128,7 +128,10 @@ foreach (@textfiles) {
                 }
 
                 # APPLY SUBST to remove from future consideration
-                $line =~ s/$_/$replace{$_}/eg for @matches_broken_dialogue;
+                for (@matches_broken_dialogue) {
+                    my $m = quotemeta $_; # there might be parenthesis in the matches, need to quotemeta
+                    $line =~ s/$m/$replace{$_}/eg;
+                }
                 %replace = (); # clear the replace hash
 
                 
