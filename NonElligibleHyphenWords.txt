@@ -1,6 +1,5 @@
 a
 again
-all
 also
 an
 and
@@ -42,7 +41,6 @@ I.ll
 I.m
 I.ve
 if
-in
 is
 it
 it.s
@@ -52,6 +50,7 @@ just
 may
 maybe
 me
+might
 more
 my
 never
@@ -63,6 +62,7 @@ oh
 or
 out
 ours
+perhaps
 probably
 say
 see
@@ -78,6 +78,7 @@ their
 them
 then
 there
+these
 they
 this
 those
@@ -100,6 +101,7 @@ wherever
 which
 while
 who
+why
 will
 with
 would
