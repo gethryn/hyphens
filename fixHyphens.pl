@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use 5.18.0;
 use utf8;
+use List::Util 'sum';
 binmode(STDOUT, "encoding(UTF-8)");
 
 # Usage:  
@@ -85,6 +86,7 @@ foreach (@textfiles) {
     print STDOUT "* Parsing hyphens...\n";
     my %counter; # for output
 
+    $counter{'hyphen'} = 0;
     $counter{'broken_dialogue'} = 0;
     $counter{'emphasis'} = 0;
     $counter{'emdash'} = 0;
@@ -97,9 +99,10 @@ foreach (@textfiles) {
         # get a list of the matches
         if ($line =~ m/$para_start/) { # starts with p-tag
             my @matches_line = $line =~ m/-/g;
-            
+
             # and count them
             my $count = scalar @matches_line;
+            $counter{'hyphen'} += $count;
 
             if ($count != 0 and $DEBUG) {
                 print STDOUT "[$count \@ line $.: ";
@@ -239,8 +242,13 @@ foreach (@textfiles) {
     close FH or die "Can't close file: $!";
     close FHOUT or die "Can't close file: $!";
 
+    my $fixed_count = sum values %counter; 
+    $fixed_count -= $counter{'line'};
+    $fixed_count -= $counter{'hyphen'};
+
     print STDOUT "* File contained $counter{'line'} lines.\n";
-    print STDOUT "* Processed " . scalar @all_matches ." instances of hyphenated word(s).\n";
+    print STDOUT "* Adjusted " . $fixed_count ." unique hyphenated word(s) from " . 
+                    $counter{'hyphen'} . " total hyphen(s) detected.\n";
     print STDOUT "* Wrote output to [$textfile_out].\n";
     
     if ($DEBUG) {
