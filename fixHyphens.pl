@@ -60,11 +60,12 @@ $regex_noneligible = qr/(?<![-])(?<![-])((?:\b\w+?\b|\))[-]\b(?:$regex_noneligib
 
 # regex to look for hyphenated words
 my $regex = qr/\w+\s*-+\s*\w+/; # any word with hyphen(s); possible spaces around hyphen
-my $regex_emdashes = qr/(\s+-\b|\b-\s+|\s+-\s+|\s*-{2,}\s*)/;  # this subset are probably em-dashes
+my $regex_emdashes = qr/(?<!\d)(\s+-\b|\b-\s+|\s+-\s+|\s*-{2,}\s*)(?!\d)/;  # this subset are probably em-dashes
 my $regex_multi_hyphen = qr/\w+(?:-\w+){2,}/; # more than one hypehen in a word -- ignore these
 my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-[^-]+?-)[$after]/; # I know him -too- well.
 my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"']|\W[’”“‘"']\s*[-]\s*\b\w+?\b)/; # ends with a hyphen
+my $regex_hyphenated_with_numbers = qr/((?<=\d)\s*-\s*(?=\w)|(?<=\w)\s*-\s*(?=\d))/; # e.g. "MIG -25" or "MIG- 25"-> "MIG-25"
 
 print "\n\nNon-Eligible Word Pattern generated from $wordfile:\n\n$regex_noneligible";
 
@@ -92,6 +93,7 @@ foreach (@textfiles) {
     $counter{'emdash'} = 0;
     $counter{'noneligible'} = 0;
     $counter{'repeated'} = 0;
+    $counter{'with_numbers'} = 0;
 
     while (<FH>) {
         my $line = $_;
@@ -215,6 +217,32 @@ foreach (@textfiles) {
                 $line =~ s/$_/$replace{$_}/eg for @matches_repeated;
                 %replace = (); # clear the replace hash
 
+                # hyphenated words with numbers
+                my @matches_hyphenated_with_numbers = $line =~ m/$regex_hyphenated_with_numbers/g;
+                $counter{'with_numbers'} += scalar @matches_hyphenated_with_numbers;
+                @matches_hyphenated_with_numbers = uniq(@matches_hyphenated_with_numbers);
+                @values = map { s/\s//gr } @matches_hyphenated_with_numbers;
+
+                say @matches_hyphenated_with_numbers;
+                say @values;
+
+                @replace{@matches_hyphenated_with_numbers} = @values;
+
+                if (@matches_hyphenated_with_numbers) {
+                    print STDOUT "  withnums => ";
+                    print STDOUT map { "$_ = $replace{$_}; " } @matches_hyphenated_with_numbers;
+                    print STDOUT "\n";
+                }
+
+                # APPLY SUBST to remove from future consideration
+                for ($DEBUG) {
+                    my $m = quotemeta $_; #hyphens not allowed in key
+                    say $m . " ==> " . $replace{$_};
+                    $line =~ s/$m/$replace{$_}/eg;
+                }
+                # $line =~ s/$_/$replace{$_}/eg for @matches_hyphenated_with_numbers;
+                %replace = (); # clear the replace hash
+
             }
 
             if ($count != 0 and $DEBUG) {
@@ -237,7 +265,8 @@ foreach (@textfiles) {
     print STDOUT "\n\t-> emphasis: " . $counter{'emphasis'};
     print STDOUT "\n\t-> apparent emdash: " . $counter{'emdash'};
     print STDOUT "\n\t-> non-eligible: " . $counter{'noneligible'};
-    print STDOUT "\n\t-> repeated: " . $counter{'repeated'} . "\n\n";
+    print STDOUT "\n\t-> repeated: " . $counter{'repeated'};
+    print STDOUT "\n\t-> with numbers: " . $counter{'with_numbers'} . "\n\n";
     
     close FH or die "Can't close file: $!";
     close FHOUT or die "Can't close file: $!";
