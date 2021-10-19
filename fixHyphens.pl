@@ -223,21 +223,17 @@ foreach (@textfiles) {
                 @matches_hyphenated_with_numbers = uniq(@matches_hyphenated_with_numbers);
                 @values = map { s/\s//gr } @matches_hyphenated_with_numbers;
 
-                say @matches_hyphenated_with_numbers;
-                say @values;
-
                 @replace{@matches_hyphenated_with_numbers} = @values;
 
-                if (@matches_hyphenated_with_numbers) {
+                if ($DEBUG) {
                     print STDOUT "  withnums => ";
                     print STDOUT map { "$_ = $replace{$_}; " } @matches_hyphenated_with_numbers;
                     print STDOUT "\n";
                 }
 
                 # APPLY SUBST to remove from future consideration
-                for ($DEBUG) {
+                for (@matches_hyphenated_with_numbers) {
                     my $m = quotemeta $_; #hyphens not allowed in key
-                    say $m . " ==> " . $replace{$_};
                     $line =~ s/$m/$replace{$_}/eg;
                 }
                 # $line =~ s/$_/$replace{$_}/eg for @matches_hyphenated_with_numbers;
