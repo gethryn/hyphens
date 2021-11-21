@@ -8,7 +8,8 @@ are
 as
 at
 be
-bmy
+because
+before
 both
 but
 by
@@ -19,6 +20,7 @@ cater
 come
 could
 did
+didn.t
 do
 each
 else
@@ -54,6 +56,8 @@ me
 might
 more
 my
+myself
+neither
 never
 nor
 not
@@ -62,15 +66,20 @@ of
 oh
 or
 out
+our
 ours
+past
 perhaps
 probably
+saw
 say
+saying
 see
 shall
 she
 so
 someone
+such
 that
 that.ll
 that.[sd]
