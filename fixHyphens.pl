@@ -66,6 +66,7 @@ my $regex_repeated_word = qr/(\b\w+\b)\s*-\s*(\1)/; # stuttering
 my $regex_emphasis = qr/[$before](-[^-]+?-)[$after]/; # I know him -too- well.
 my $regex_broken_dialogue = qr/(\b\w+?\b\s*[-]\s*[’”“‘"']|\W[’”“‘"']\s*[-]\s*\b\w+?\b)/; # ends with a hyphen
 my $regex_hyphenated_with_numbers = qr/((?<=\d)\s*-\s*(?=\w)|(?<=\w)\s*-\s*(?=\d))/; # e.g. "MIG -25" or "MIG- 25"-> "MIG-25"
+my $regex_after_punct = qr/[[:punct:]]-/; #20
 
 print "\n\nNon-Eligible Word Pattern generated from $wordfile:\n\n$regex_noneligible";
 
@@ -94,6 +95,7 @@ foreach (@textfiles) {
     $counter{'noneligible'} = 0;
     $counter{'repeated'} = 0;
     $counter{'with_numbers'} = 0;
+    $counter{'after_punct'} = 0;
 
     while (<FH>) {
         my $line = $_;
@@ -239,6 +241,28 @@ foreach (@textfiles) {
                 # $line =~ s/$_/$replace{$_}/eg for @matches_hyphenated_with_numbers;
                 %replace = (); # clear the replace hash
 
+                # hyphens after punctuation
+                my @matches_after_punct = $line =~ m/$regex_after_punct/g;
+                $counter{'after_punct'} += scalar @matches_after_punct;
+                @matches_after_punct = uniq(@matches_after_punct);
+                @values = map { s/-/—/gr } @matches_after_punct;
+
+                @replace{@matches_after_punct} = @values;
+
+                if ($DEBUG) {
+                    print STDOUT "  afterpunct => ";
+                    print STDOUT map { "$_ = $replace{$_}; " } @matches_after_punct;
+                    print STDOUT "\n";
+                }
+
+                # APPLY SUBST to remove from future consideration
+                for (@matches_after_punct) {
+                    my $m = quotemeta $_; #hyphens not allowed in key
+                    $line =~ s/$m/$replace{$_}/eg;
+                }
+                # $line =~ s/$_/$replace{$_}/eg for @matches_hyphenated_with_numbers;
+                %replace = (); # clear the replace hash
+
             }
 
             if ($count != 0 and $DEBUG) {
@@ -262,7 +286,8 @@ foreach (@textfiles) {
     print STDOUT "\n\t-> apparent emdash: " . $counter{'emdash'};
     print STDOUT "\n\t-> non-eligible: " . $counter{'noneligible'};
     print STDOUT "\n\t-> repeated: " . $counter{'repeated'};
-    print STDOUT "\n\t-> with numbers: " . $counter{'with_numbers'} . "\n\n";
+    print STDOUT "\n\t-> with numbers: " . $counter{'with_numbers'};
+    print STDOUT "\n\t-> after punctuation: " . $counter{'after_punct'} . "\n\n";
     
     close FH or die "Can't close file: $!";
     close FHOUT or die "Can't close file: $!";
