@@ -5,6 +5,7 @@ an
 and
 any
 are
+aren.t
 as
 at
 be
@@ -19,9 +20,11 @@ can
 cater
 come
 could
+couldn.t
 did
 didn.t
 do
+don.t
 each
 else
 especially
@@ -32,6 +35,7 @@ from
 had
 has
 have
+having
 he
 he.[sd]
 her
@@ -42,14 +46,17 @@ how
 I
 I.ll
 I.m
+into
 I.ve
 if
 is
+isn.t
 it
 it.s
 it.ll
 its
 just
+let.s
 may
 maybe
 me
@@ -64,6 +71,7 @@ not
 now
 of
 oh
+only
 or
 out
 our
